@@ -1,0 +1,18 @@
+## Interface: 80200
+## Title: SpotPointer
+## Author: 10leej, Semlar, zork, Dejablue
+## Notes: Sopt things
+
+Bindings.xml
+
+#Spot player
+SpotMe.lua
+
+#Spot target
+Crosshairs.lua
+
+#GCD ring
+rCompassCastbar.lua
+
+#Raid mark
+DejaMark.lua
