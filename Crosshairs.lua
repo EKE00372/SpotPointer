@@ -113,6 +113,8 @@ alpha1:SetDuration(0.2)
 --alpha:SetDuration(0.2)
 fadeOut:SetScript("OnFinished", function(self) f:Hide() end)
 
+local targetPlate
+
 local function SetColor(r, g, b)
 	circle:SetVertexColor(r, g, b)
 	left:SetVertexColor(r, g, b)
@@ -136,16 +138,23 @@ SetLineAlpha(lineAlpha)
 -- fade in if our crosshairs weren"t visible
 local Moving = false
 local function FocusPlate(plate)
-    --f:SetPoint("CENTER", plate)
+	--f:SetPoint("CENTER", plate)
 	fadeOut:Stop()
-    f:ClearAllPoints()
-    f:SetPoint("CENTER", plate)
 	if not f:IsShown() then
+		local x, y = plate:GetCenter()
+		if x and y then
+			local scale = plate:GetEffectiveScale()
+			x, y = x * scale, y * scale
+			local fScale = f:GetScale()
+			x, y = x / fScale, y / fScale
+			f:SetPoint("CENTER", nil, "BOTTOMLEFT", ScaleCoords(x, y))
+		end
 		fadeIn:Play()
 	end
 	
 	f:Show()
 	group:Play()
+	targetPlate = plate
 	
 	local r, g, b = 1, 1, 1
 	--if UnitIsTapped("target") and not UnitIsTappedByPlayer("target") and not UnitIsTappedByAllThreatList("target") then
@@ -168,16 +177,18 @@ local function FocusPlate(plate)
 	SetColor(r, g, b)
 	
 	
-	--Moving = GetTime()
+	Moving = GetTime()
 end
 
 function f:PLAYER_TARGET_CHANGED()
 	local nameplate = C_NamePlate.GetNamePlateForUnit("target") --f:GetPlateByGUID(targetGUID)
 	if nameplate then
+		targetPlate = nameplate
 		FocusPlate(nameplate)
 		--TargetLock:Show()
 	else
 		fadeOut:Play()
+		targetPlate = nil
 	end
 end
 f:RegisterEvent("PLAYER_TARGET_CHANGED")
@@ -195,9 +206,84 @@ function ScaleCoords(xPixel, yPixel, trueScale)
 	return trueScale and (xPixel * xFactor) or (x * xFactor), trueScale and (xPixel * xFactor) or (y * yFactor)
 end
 
+f:SetScript("OnUpdate", function(self, elapsed)
+	--if Moving and GetTime() - Moving > 0.75 then Moving = false end -- snap to the target if it"s been moving for a while
+	
+	local plate = targetPlate
+	if plate then
+		if Moving then
+			local frame1, frame2 = f, targetPlate
+			local x1, y1 = frame1:GetCenter()
+			x1, y1 = x1 * frame1:GetEffectiveScale(), y1 * frame1:GetEffectiveScale()
+			local x2, y2 = frame2:GetCenter()
+			x2, y2 = x2 * frame2:GetEffectiveScale(), y2 * frame2:GetEffectiveScale()
+			local delta1, delta2 = y2 - y1, x2 - x1
+			local distance = ( delta2 ^ 2 + delta1 ^ 2 ) ^ 0.5
+			--local vector = sqrt( delta2 ^ 2 + delta1 ^ 2 ) -- length
+			--local nx, ny = delta2 / vector, delta1 / vector
+			
+			local timeLeft = Moving + 1 - GetTime()
+			
+			if timeLeft > 0 and distance > 3 then
+				-- Move distance / timeLeft toward frame2
+				-- elapsed / timeLeft
+				local amountToMove = distance / timeLeft / 10
+				local ratio = amountToMove / distance
+				-- Move a point along a line in a given direction
+				local x = x1 + ratio * delta2
+				local y = y1 + ratio * delta1
+				frame1:ClearAllPoints()
+				frame1:SetPoint("CENTER", nil, "BOTTOMLEFT", ScaleCoords(x, y))
+			else
+				frame1:ClearAllPoints()
+				frame1:SetPoint("CENTER", nil, "BOTTOMLEFT", ScaleCoords(x2, y2))
+				Moving = false
+			end
+		else
+			--f:SetPoint("CENTER", plate)
+
+			local x, y = plate:GetCenter()
+			local scale = plate:GetEffectiveScale()
+			x, y = x * scale, y * scale --(y - plate:GetHeight()/2) * scale
+			local fScale = f:GetScale()
+			x, y = x / fScale, y / fScale
+			f:SetPoint("CENTER", nil, "BOTTOMLEFT", ScaleCoords(x, y))
+		end
+	end
+end)
+
+function f:DISPLAY_SIZE_CHANGED()
+	local width, height = GetPhysicalScreenSize()
+	xFactor, yFactor = (768 / width) * (width / height), 768 / height
+	--[[
+	local currentResolution, xRes, yRes = GetCurrentResolution()
+	if currentResolution ~= 0 then
+		xRes, yRes = strmatch(({GetScreenResolutions()})[GetCurrentResolution()], "(%d+)x(%d+)")
+	else
+		xRes, yRes = strmatch(GetCVar("gxWindowedResolution"), "(%d+)x(%d+)")
+	end
+	if yRes and yRes ~= "0" then
+		xFactor, yFactor = 768 / xRes * GetMonitorAspectRatio(), 768 / yRes
+	else
+		xFactor, yFactor = 1, 1
+	end
+	--]]
+	-- GetMonitorAspectRatio() = ScreenWidth / ScreenHeight
+	-- GetCVar("gxWindowedResolution") == "1680x945" -- only updates when client is restarted
+	-- gxFullscreenResolution == "1920x1080" 
+	-- gxWindow == isWindowed?
+	-- gxMaximize == fullscreen?
+	
+end
+function f:PLAYER_LOGIN() f:DISPLAY_SIZE_CHANGED() end
+
+f:RegisterEvent("DISPLAY_SIZE_CHANGED")
+f:RegisterEvent("PLAYER_LOGIN")
+
 function f:NAME_PLATE_UNIT_ADDED(unit)
 	local nameplate = C_NamePlate.GetNamePlateForUnit(unit)
 	if nameplate and UnitIsUnit("target", unit) then
+		targetPlate = nameplate
 		FocusPlate(nameplate)
 		--TargetLock:Show()
 	end
@@ -207,6 +293,7 @@ f:RegisterEvent("NAME_PLATE_UNIT_ADDED")
 function f:NAME_PLATE_UNIT_REMOVED(unit)
 	local nameplate = C_NamePlate.GetNamePlateForUnit(unit)
 	if UnitIsUnit("target", unit) then
+		targetPlate = nil
 		fadeOut:Play()
 	end
 end

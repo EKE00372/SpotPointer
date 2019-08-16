@@ -10,7 +10,7 @@
 local A, L = ...
 
 local mediaPath = "Interface\\AddOns\\"..A.."\\media\\"
-local UnitCastingInfo,UnitChannelInfo = UnitCastingInfo,UnitChannelInfo
+local CastingInfo,ChannelInfo = CastingInfo,ChannelInfo
 local GetTime,GetCursorPosition,math = GetTime,GetCursorPosition,math
 local uiScale = 1
 
@@ -49,33 +49,6 @@ ringCfg["player"] = {
     texture = mediaPath.."compass-rose-spark",
   },
 }
-
---target settings
-ringCfg["target"] = {
-  enabled         = true,
-  size            = {512,512},
-  scale           = 0.2 * overallScale,
-  --comment this in if you want the position to be fixed, otherwise position at cursor
-  --point           = {"CENTER",0,0},
-  background = {
-    enabled = false,
-    color = {0.4,0.3,0,0.8}, --red,green,blue,alpha
-    blendmode = "ADD", --ADD or BLEND
-    texture = mediaPath.."compass-rose-bright",
-  },
-  ring = {
-    color = {1,0,0,1},
-    blendmode = "ADD",
-    texture = mediaPath.."compass-rose-ring-bright",
-  },
-  spark = {
-    enabled = true,
-    color = {1,1,1},
-    blendmode = "ADD",
-    texture = mediaPath.."compass-rose-spark",
-  },
-}
-
 --gcd settings
 ringCfg["gcd"] = {
   enabled         = true,
@@ -89,32 +62,6 @@ ringCfg["gcd"] = {
   },
   ring = {
     color = {0.5,0.5,0.5,1},
-    blendmode = "ADD",
-    texture = mediaPath.."compass-rose-ring-bright",
-  },
-  spark = {
-    enabled = true,
-    color = {1,1,1},
-    blendmode = "ADD",
-    texture = mediaPath.."compass-rose-spark",
-  },
-}
-
---focus settings
-ringCfg["focus"] = {
-  enabled         = true,
-  size            = {512,512},
-  scale           = 0.15 * overallScale,
-  --comment this in if you want the position to be fixed, otherwise position at cursor
-  --point           = {"CENTER",0,0},
-  background = {
-    enabled = false,
-    color = {0.4,0.3,0,0.8}, --red,green,blue,alpha
-    blendmode = "ADD", --ADD or BLEND
-    texture = mediaPath.."compass-rose-bright",
-  },
-  ring = {
-    color = {0,0.5,1,1},
     blendmode = "ADD",
     texture = mediaPath.."compass-rose-ring-bright",
   },
@@ -149,9 +96,9 @@ end
 local function OnUpdate(self,elapsed)
   self.elapsed = self.elapsed + elapsed
   if self.update and self.unit ~= "gcd" then
-    self.spellName, self.spellText, self.spellTexture, self.startTime, self.endTime = UnitCastingInfo(self.unit)
+    self.spellName, self.spellText, self.spellTexture, self.startTime, self.endTime = CastingInfo(self.unit)
     if not self.spellName then
-      self.spellName, self.spellText, self.spellTexture, self.startTime, self.endTime = UnitChannelInfo(self.unit)
+      self.spellName, self.spellText, self.spellTexture, self.startTime, self.endTime = ChannelInfo(self.unit)
     end
     if not self.spellName then
       Disable(self)
@@ -164,7 +111,9 @@ local function OnUpdate(self,elapsed)
   end
   if self.update and self.unit == "gcd" then
     --gcd spellid http://www.wowhead.com/spell=61304/global-cooldown
-    self.startTime, self.duration = GetSpellCooldown(61304)
+	
+    --self.startTime, self.duration = GetSpellCooldown(61304)
+    self.startTime, self.duration = GetSpellCooldown(20217)
     if self.duration == 0 then
       Disable(self)
       return
@@ -318,18 +267,6 @@ local function CreateCompassCastbar(unit,cfg)
     f:RegisterUnitEvent("UNIT_SPELLCAST_CHANNEL_START", unit)
     f:RegisterUnitEvent("UNIT_SPELLCAST_CHANNEL_UPDATE", unit)
     f:RegisterUnitEvent("UNIT_SPELLCAST_CHANNEL_STOP", unit)
-  end
-  --pet events
-  if unit == "pet" then
-    f:RegisterUnitEvent("UNIT_PET","player")
-  end
-  --focus events
-  if unit == "focus" then
-    f:RegisterEvent("PLAYER_FOCUS_CHANGED")
-  end
-  --target events
-  if unit == "target" then
-    f:RegisterEvent("PLAYER_TARGET_CHANGED")
   end
   --gcd events
   if unit == "gcd" then

@@ -1,4 +1,4 @@
-## Interface: 80200
+## Interface: 11302
 ## Title: SpotPointer
 ## Author: 10leej, Semlar, zork, Dejablue
 ## Notes: Sopt things
